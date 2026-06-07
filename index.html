@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Spendly">
+  <meta name="theme-color" content="#0a0a0a">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Spendly</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --surface2: #1c1c1c;
+      --border: #2a2a2a;
+      --border2: #333;
+      --text: #f0ede8;
+      --text2: #8a8580;
+      --text3: #555;
+      --accent: #c8f060;
+      --accent-dim: #a8d040;
+      --accent-bg: rgba(200,240,96,0.08);
+      --red: #ff5f57;
+      --amber: #ffb340;
+      --blue: #4fa3e0;
+      --purple: #a78bfa;
+      --food: #c8f060;
+      --leisure: #a78bfa;
+      --subscriptions: #4fa3e0;
+      --transport: #ffb340;
+      --other: #8a8580;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --r: 10px;
+      --r-lg: 16px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-mono); min-height: 100%; overscroll-behavior: none; }
+    input, select, button, textarea { font-family: var(--font-mono); }
+
+    /* AUTH SCREEN */
+    #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100svh; padding: 2rem; }
+    .auth-logo { font-family: var(--font-head); font-size: 3rem; font-weight: 800; color: var(--accent); letter-spacing: -0.04em; margin-bottom: 0.25rem; }
+    .auth-sub { font-size: 0.75rem; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3rem; }
+    .auth-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 2rem; }
+    .auth-title { font-family: var(--font-head); font-size: 1.1rem; font-weight: 600; margin-bottom: 1.5rem; }
+    .auth-tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .auth-tab { flex: 1; padding: 0.6rem; font-size: 0.8rem; background: transparent; border: none; color: var(--text2); cursor: pointer; transition: all 0.2s; letter-spacing: 0.02em; }
+    .auth-tab.active { background: var(--accent); color: #0a0a0a; font-weight: 500; }
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; font-size: 0.72rem; color: var(--text2); margin-bottom: 0.4rem; letter-spacing: 0.04em; text-transform: uppercase; }
+    .field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 0.75rem 1rem; color: var(--text); font-size: 0.9rem; outline: none; transition: border 0.2s; }
+    .field input:focus { border-color: var(--accent); }
+    .auth-btn { width: 100%; background: var(--accent); color: #0a0a0a; border: none; border-radius: var(--r); padding: 0.85rem; font-size: 0.9rem; font-weight: 500; cursor: pointer; font-family: var(--font-head); letter-spacing: 0.02em; transition: opacity 0.2s; margin-top: 0.5rem; }
+    .auth-btn:hover { opacity: 0.88; }
+    .auth-err { font-size: 0.78rem; color: var(--red); margin-top: 0.75rem; text-align: center; min-height: 1rem; }
+    .auth-google { width: 100%; background: transparent; border: 1px solid var(--border); border-radius: var(--r); padding: 0.75rem; font-size: 0.85rem; color: var(--text); cursor: pointer; margin-top: 0.75rem; transition: border-color 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .auth-google:hover { border-color: var(--border2); }
+    .divider { display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0; }
+    .divider span { font-size: 0.72rem; color: var(--text3); white-space: nowrap; }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background: var(--border); }
+
+    /* MAIN APP */
+    #app-screen { display: none; max-width: 480px; margin: 0 auto; padding-bottom: 90px; }
+
+    /* HEADER */
+    .header { padding: 3rem 1.25rem 1.25rem; }
+    .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+    .app-title { font-family: var(--font-head); font-size: 1.8rem; font-weight: 800; color: var(--accent); letter-spacing: -0.03em; }
+    .user-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 50px; padding: 0.4rem 0.85rem; font-size: 0.75rem; color: var(--text2); cursor: pointer; display: flex; align-items: center; gap: 0.4rem; }
+    .user-btn:hover { border-color: var(--border2); }
+
+    /* TOTAL CARD */
+    .total-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.5rem; margin: 0 1.25rem 1rem; position: relative; overflow: hidden; }
+    .total-card::before { content:''; position:absolute; top:-40px; right:-40px; width:120px; height:120px; background: radial-gradient(circle, rgba(200,240,96,0.12) 0%, transparent 70%); pointer-events:none; }
+    .total-label { font-size: 0.72rem; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem; }
+    .total-amount { font-family: var(--font-head); font-size: 2.8rem; font-weight: 800; letter-spacing: -0.04em; color: var(--text); line-height: 1; }
+    .total-period { font-size: 0.72rem; color: var(--text3); margin-top: 0.4rem; }
+    .budget-bar-wrap { margin-top: 1.25rem; }
+    .budget-bar-labels { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text2); margin-bottom: 0.4rem; }
+    .budget-bar-outer { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .budget-bar-inner { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s ease; }
+    .budget-bar-inner.warn { background: var(--amber); }
+    .budget-bar-inner.over { background: var(--red); }
+
+    /* MINI STATS */
+    .mini-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin: 0 1.25rem 1.25rem; }
+    .mini-stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.75rem 0.6rem; text-align: center; }
+    .mini-stat-label { font-size: 0.65rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+    .mini-stat-val { font-family: var(--font-head); font-size: 1rem; font-weight: 700; }
+    .mini-stat-val.food { color: var(--food); }
+    .mini-stat-val.leisure { color: var(--leisure); }
+    .mini-stat-val.subs { color: var(--subscriptions); }
+    .mini-stat-val.other { color: var(--other); }
+
+    /* SAVINGS GOALS */
+    .section { margin: 0 1.25rem 1.25rem; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .section-title { font-family: var(--font-head); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text2); }
+    .icon-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; color: var(--text2); }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .goal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem; margin-bottom: 0.5rem; }
+    .goal-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+    .goal-name { font-family: var(--font-head); font-size: 0.95rem; font-weight: 600; }
+    .goal-amounts { font-size: 0.75rem; color: var(--text2); margin-top: 0.15rem; }
+    .goal-pct { font-family: var(--font-head); font-size: 1.4rem; font-weight: 800; color: var(--accent); }
+    .goal-bar-outer { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .goal-bar-inner { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.5s; }
+
+    /* NAV */
+    .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,10,10,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom)); max-width: 480px; margin: 0 auto; }
+    .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; background: none; border: none; cursor: pointer; padding: 0.4rem; color: var(--text3); transition: color 0.2s; }
+    .nav-btn.active { color: var(--accent); }
+    .nav-icon { font-size: 1.3rem; line-height: 1; }
+    .nav-label { font-size: 0.6rem; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    /* PAGES */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* SCAN PAGE */
+    .scan-drop { margin: 0 1.25rem 1rem; border: 1.5px dashed var(--border2); border-radius: var(--r-lg); padding: 2.5rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .scan-drop:hover, .scan-drop.drag { border-color: var(--accent); background: var(--accent-bg); }
+    .scan-drop-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .scan-drop-label { font-family: var(--font-head); font-size: 1rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .scan-drop-sub { font-size: 0.75rem; color: var(--text2); }
+    .scan-preview { margin: 0 1.25rem; }
+    .scan-img { width: 100%; border-radius: var(--r); margin-bottom: 1rem; max-height: 200px; object-fit: cover; }
+    .analyzing { display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; color: var(--text2); padding: 1rem 1.25rem; }
+    .spinner { width: 18px; height: 18px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; margin-bottom: 1rem; }
+    .result-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+    .result-row:last-of-type { border-bottom: none; }
+    .result-lbl { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; }
+    .result-val { font-family: var(--font-head); font-size: 0.95rem; font-weight: 600; }
+    .cat-pill { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 50px; font-weight: 500; letter-spacing: 0.02em; }
+    .pill-food { background: rgba(200,240,96,0.15); color: var(--food); }
+    .pill-leisure { background: rgba(167,139,250,0.15); color: var(--leisure); }
+    .pill-subscriptions { background: rgba(79,163,224,0.15); color: var(--subscriptions); }
+    .pill-transport { background: rgba(255,179,64,0.15); color: var(--transport); }
+    .pill-other { background: rgba(138,133,128,0.15); color: var(--other); }
+    .btn-row { display: flex; gap: 0.75rem; margin-top: 1rem; }
+    .btn-primary { flex: 1; background: var(--accent); color: #0a0a0a; border: none; border-radius: var(--r); padding: 0.85rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; font-family: var(--font-head); }
+    .btn-primary:hover { opacity: 0.88; }
+    .btn-secondary { flex: 1; background: transparent; border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem; font-size: 0.875rem; color: var(--text2); cursor: pointer; font-family: var(--font-mono); }
+    .btn-secondary:hover { border-color: var(--border2); }
+
+    /* ADD PAGE */
+    .add-form { padding: 0 1.25rem; }
+    .form-field { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: 0.72rem; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.4rem; }
+    .form-input { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem 1rem; color: var(--text); font-size: 0.9rem; outline: none; transition: border 0.2s; font-family: var(--font-mono); }
+    .form-input:focus { border-color: var(--accent); }
+    .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .cat-opt { border: 1px solid var(--border); border-radius: var(--r); padding: 0.65rem 0.5rem; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 0.75rem; color: var(--text2); }
+    .cat-opt.sel-food { border-color: var(--food); background: rgba(200,240,96,0.1); color: var(--food); }
+    .cat-opt.sel-leisure { border-color: var(--leisure); background: rgba(167,139,250,0.1); color: var(--leisure); }
+    .cat-opt.sel-subscriptions { border-color: var(--subscriptions); background: rgba(79,163,224,0.1); color: var(--subscriptions); }
+    .cat-opt.sel-transport { border-color: var(--transport); background: rgba(255,179,64,0.1); color: var(--transport); }
+    .cat-opt.sel-other { border-color: var(--other); background: rgba(138,133,128,0.1); color: var(--other); }
+    .add-btn { width: 100%; background: var(--accent); color: #0a0a0a; border: none; border-radius: var(--r); padding: 1rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: var(--font-head); margin-top: 1.5rem; }
+    .add-btn:hover { opacity: 0.88; }
+
+    /* LOG PAGE */
+    .log-list { padding: 0 1.25rem; }
+    .log-date-group { margin-bottom: 1rem; }
+    .log-date-label { font-size: 0.7rem; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+    .log-item { display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 0; border-bottom: 1px solid var(--border); }
+    .log-item:last-child { border-bottom: none; }
+    .log-left { display: flex; align-items: center; gap: 0.75rem; }
+    .log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .log-info { display: flex; flex-direction: column; gap: 0.15rem; }
+    .log-desc { font-size: 0.875rem; color: var(--text); }
+    .log-cat { font-size: 0.68rem; color: var(--text2); }
+    .log-right { display: flex; align-items: center; gap: 0.75rem; }
+    .log-amt { font-family: var(--font-head); font-size: 0.95rem; font-weight: 700; }
+    .del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 1rem; padding: 0.25rem; }
+    .del-btn:hover { color: var(--red); }
+    .export-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: calc(100% - 2.5rem); margin: 1rem 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 0.85rem; font-size: 0.85rem; color: var(--text2); cursor: pointer; font-family: var(--font-mono); }
+    .export-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* SETTINGS / GOALS PAGE */
+    .settings-section { margin: 0 1.25rem 1.5rem; }
+    .settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    .settings-row { display: flex; justify-content: space-between; align-items: center; padding: 0.9rem 1rem; border-bottom: 1px solid var(--border); }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row-label { font-size: 0.85rem; color: var(--text); }
+    .settings-row-sub { font-size: 0.72rem; color: var(--text2); margin-top: 0.1rem; }
+    .settings-input { background: transparent; border: none; color: var(--accent); font-family: var(--font-head); font-size: 1rem; font-weight: 700; text-align: right; width: 100px; outline: none; }
+    .settings-input::placeholder { color: var(--text3); }
+
+    /* MODAL */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: flex-end; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg) var(--r-lg) 0 0; padding: 1.5rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom)); width: 100%; max-width: 480px; }
+    .modal-title { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; margin-bottom: 1.25rem; }
+    .modal-field { margin-bottom: 1rem; }
+    .modal-label { font-size: 0.72rem; color: var(--text2); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 0.4rem; display: block; }
+    .modal-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 0.75rem 1rem; color: var(--text); font-size: 0.9rem; outline: none; font-family: var(--font-mono); }
+    .modal-input:focus { border-color: var(--accent); }
+    .modal-btns { display: flex; gap: 0.75rem; margin-top: 1rem; }
+
+    /* TOAST */
+    .toast { position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%) translateY(-80px); background: var(--surface); border: 1px solid var(--border); border-radius: 50px; padding: 0.6rem 1.25rem; font-size: 0.8rem; color: var(--text2); transition: transform 0.3s ease; z-index: 200; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--text3); font-size: 0.875rem; }
+    .sync-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.7rem; color: var(--text3); padding: 0 1.25rem 0.5rem; }
+    .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--food); }
+    .sync-dot.syncing { background: var(--amber); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+  </style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-logo">Spendly</div>
+  <div class="auth-sub">your money, tracked</div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuth('login')">Sign in</button>
+      <button class="auth-tab" onclick="switchAuth('register')">Register</button>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email"></div>
+    <div class="field"><label>Password</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"></div>
+    <button class="auth-btn" onclick="doAuth()">Continue →</button>
+    <div class="divider"><span>or</span></div>
+    <button class="auth-google" onclick="doGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continue with Google
+    </button>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span id="sync-msg">Synced</span></div>
+
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="header">
+      <div class="header-top">
+        <div class="app-title">Spendly</div>
+        <button class="user-btn" onclick="showPage('settings')">⚙ Settings</button>
+      </div>
+    </div>
+    <div class="total-card">
+      <div class="total-label">This week's spend</div>
+      <div class="total-amount" id="week-total">£0.00</div>
+      <div class="total-period" id="week-period"></div>
+      <div class="budget-bar-wrap" id="budget-bar-wrap">
+        <div class="budget-bar-labels">
+          <span id="bar-spent-label">£0 spent</span>
+          <span id="bar-budget-label">£0 budget</span>
+        </div>
+        <div class="budget-bar-outer"><div class="budget-bar-inner" id="budget-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="mini-stats">
+      <div class="mini-stat"><div class="mini-stat-label">Food</div><div class="mini-stat-val food" id="ms-food">£0</div></div>
+      <div class="mini-stat"><div class="mini-stat-label">Leisure</div><div class="mini-stat-val leisure" id="ms-leisure">£0</div></div>
+      <div class="mini-stat"><div class="mini-stat-label">Subs</div><div class="mini-stat-val subs" id="ms-subs">£0</div></div>
+      <div class="mini-stat"><div class="mini-stat-label">Other</div><div class="mini-stat-val other" id="ms-other">£0</div></div>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">Savings goals</div>
+        <button class="icon-btn" onclick="openGoalModal()">+</button>
+      </div>
+      <div id="goals-container"><div class="empty-state">No goals yet — tap + to add one</div></div>
+    </div>
+  </div>
+
+  <!-- SCAN PAGE -->
+  <div class="page" id="page-scan">
+    <div class="header"><div class="header-top"><div class="app-title">Scan</div></div></div>
+    <div class="scan-drop" id="scan-drop" onclick="document.getElementById('file-in').click()">
+      <input type="file" id="file-in" accept="image/*" capture="environment" style="display:none" onchange="handleFile(event)">
+      <div class="scan-drop-icon">📸</div>
+      <div class="scan-drop-label">Photograph a receipt</div>
+      <div class="scan-drop-sub">Or tap to choose from library</div>
+    </div>
+    <div id="scan-result"></div>
+  </div>
+
+  <!-- ADD PAGE -->
+  <div class="page" id="page-add">
+    <div class="header"><div class="header-top"><div class="app-title">Add</div></div></div>
+    <div class="add-form">
+      <div class="form-field">
+        <label class="form-label">Description</label>
+        <input class="form-input" type="text" id="add-desc" placeholder="e.g. Tesco shop">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Amount (£)</label>
+        <input class="form-input" type="number" id="add-amount" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Category</label>
+        <div class="cat-grid">
+          <div class="cat-opt sel-food" data-cat="food" onclick="selectCat('food')">🥗 Food</div>
+          <div class="cat-opt" data-cat="leisure" onclick="selectCat('leisure')">🎮 Leisure</div>
+          <div class="cat-opt" data-cat="subscriptions" onclick="selectCat('subscriptions')">📱 Subs</div>
+          <div class="cat-opt" data-cat="transport" onclick="selectCat('transport')">🚗 Transport</div>
+          <div class="cat-opt" data-cat="other" onclick="selectCat('other')">📦 Other</div>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Date</label>
+        <input class="form-input" type="date" id="add-date">
+      </div>
+      <button class="add-btn" onclick="addManual()">Log expense →</button>
+    </div>
+  </div>
+
+  <!-- LOG PAGE -->
+  <div class="page" id="page-log">
+    <div class="header"><div class="header-top"><div class="app-title">Log</div></div></div>
+    <button class="export-btn" onclick="exportCSV()">⬇ Export to spreadsheet (CSV)</button>
+    <div class="log-list" id="log-list"><div class="empty-state">No expenses yet</div></div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div class="header"><div class="header-top"><div class="app-title">Settings</div></div></div>
+    <div class="settings-section">
+      <div class="section-title" style="margin-bottom:0.75rem">Weekly budget</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="settings-row-label">Weekly spending limit</div><div class="settings-row-sub">Alert when 80% is reached</div></div>
+          <div style="display:flex;align-items:center;gap:4px"><span style="color:var(--text2);font-size:0.85rem">£</span><input class="settings-input" type="number" id="budget-input" placeholder="360" oninput="saveBudget()"></div>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="section-title" style="margin-bottom:0.75rem">Account</div>
+      <div class="settings-card">
+        <div class="settings-row">
+          <div><div class="settings-row-label" id="settings-email">—</div><div class="settings-row-sub">Signed in</div></div>
+          <button onclick="doSignOut()" style="background:none;border:none;color:var(--red);font-size:0.8rem;cursor:pointer;font-family:var(--font-mono)">Sign out</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="section-title" style="margin-bottom:0.75rem">Savings goals</div>
+      <div id="settings-goals-list"></div>
+      <button onclick="openGoalModal()" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0.85rem;color:var(--text2);font-size:0.85rem;cursor:pointer;font-family:var(--font-mono);margin-top:0.5rem">+ Add new goal</button>
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showPage('home')"><div class="nav-icon">⌂</div><div class="nav-label">Home</div></button>
+    <button class="nav-btn" onclick="showPage('scan')"><div class="nav-icon">◎</div><div class="nav-label">Scan</div></button>
+    <button class="nav-btn" onclick="showPage('add')"><div class="nav-icon">＋</div><div class="nav-label">Add</div></button>
+    <button class="nav-btn" onclick="showPage('log')"><div class="nav-label">≡</div><div class="nav-label">Log</div></button>
+    <button class="nav-btn" onclick="showPage('settings')"><div class="nav-icon">◈</div><div class="nav-label">Settings</div></button>
+  </nav>
+</div>
+
+<!-- GOAL MODAL -->
+<div class="modal-bg" id="goal-modal">
+  <div class="modal">
+    <div class="modal-title">New savings goal</div>
+    <div class="modal-field"><label class="modal-label">Goal name</label><input class="modal-input" id="goal-name" placeholder="e.g. House deposit"></div>
+    <div class="modal-field"><label class="modal-label">Target amount (£)</label><input class="modal-input" type="number" id="goal-target" placeholder="10000"></div>
+    <div class="modal-field"><label class="modal-label">Current savings (£)</label><input class="modal-input" type="number" id="goal-saved" placeholder="0"></div>
+    <div class="modal-btns">
+      <button class="btn-primary" onclick="addGoal()">Save goal →</button>
+      <button class="btn-secondary" onclick="closeGoalModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── FIREBASE CONFIG ──────────────────────────────────────────────────────────
+// Replace the values below with your own Firebase project config
+// (Instructions in SETUP.md)
+const firebaseConfig = {
+  apiKey: "REPLACE_WITH_YOUR_API_KEY",
+  authDomain: "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+  projectId: "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket: "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+  appId: "REPLACE_WITH_YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let expenses = [];
+let goals = [];
+let budget = 0;
+let selectedCat = 'food';
+let currentUser = null;
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+let authMode = 'login';
+function switchAuth(mode) {
+  authMode = mode;
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&mode==='login')||(i===1&&mode==='register')));
+  document.getElementById('auth-err').textContent = '';
+}
+
+async function doAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-err');
+  errEl.textContent = '';
+  try {
+    if (authMode === 'login') await auth.signInWithEmailAndPassword(email, pass);
+    else await auth.createUserWithEmailAndPassword(email, pass);
+  } catch(e) {
+    errEl.textContent = e.message.replace('Firebase: ','').replace(/\(.*\)/,'').trim();
+  }
+}
+
+async function doGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try { await auth.signInWithPopup(provider); } catch(e) {
+    document.getElementById('auth-err').textContent = e.message;
+  }
+}
+
+async function doSignOut() {
+  await auth.signOut();
+}
+
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('settings-email').textContent = user.email || user.displayName || 'User';
+    loadData();
+  } else {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+  }
+});
+
+// ── FIRESTORE ─────────────────────────────────────────────────────────────────
+function userDoc() { return db.collection('users').doc(currentUser.uid); }
+
+function setSyncStatus(state) {
+  const dot = document.getElementById('sync-dot');
+  const msg = document.getElementById('sync-msg');
+  dot.className = 'sync-dot' + (state === 'syncing' ? ' syncing' : '');
+  msg.textContent = state === 'syncing' ? 'Syncing...' : state === 'error' ? 'Sync error' : 'Synced';
+}
+
+async function loadData() {
+  setSyncStatus('syncing');
+  try {
+    const doc = await userDoc().get();
+    if (doc.exists) {
+      const d = doc.data();
+      expenses = d.expenses || [];
+      goals = d.goals || [];
+      budget = d.budget || 0;
+    }
+    if (budget) document.getElementById('budget-input').value = budget;
+    setSyncStatus('ok');
+    renderAll();
+  } catch(e) { setSyncStatus('error'); }
+}
+
+async function saveData() {
+  if (!currentUser) return;
+  setSyncStatus('syncing');
+  try {
+    await userDoc().set({ expenses, goals, budget }, { merge: true });
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('error'); }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+const CATS = { food:'Food', leisure:'Leisure', subscriptions:'Subscriptions', transport:'Transport', other:'Other' };
+const CAT_COLORS = { food:'#c8f060', leisure:'#a78bfa', subscriptions:'#4fa3e0', transport:'#ffb340', other:'#8a8580' };
+
+function fmt(n) { return '£' + Number(n).toFixed(2); }
+function fmtShort(n) { return n >= 1000 ? '£' + (n/1000).toFixed(1) + 'k' : '£' + Math.round(n); }
+
+function getWeekRange() {
+  const now = new Date();
+  const day = now.getDay() || 7;
+  const mon = new Date(now); mon.setDate(now.getDate() - day + 1); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+  return { start: mon, end: sun };
+}
+
+function renderAll() {
+  renderHome();
+  renderLog();
+  renderGoalsSettings();
+}
+
+function renderHome() {
+  const { start, end } = getWeekRange();
+  const weekExp = expenses.filter(e => { const d = new Date(e.date); return d >= start && d <= end; });
+  const totals = { food:0, leisure:0, subscriptions:0, transport:0, other:0 };
+  weekExp.forEach(e => { totals[e.category] = (totals[e.category]||0) + e.amount; });
+  const total = Object.values(totals).reduce((a,b)=>a+b,0);
+
+  document.getElementById('week-total').textContent = fmt(total);
+  document.getElementById('week-period').textContent =
+    `${start.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${end.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`;
+
+  document.getElementById('ms-food').textContent = fmtShort(totals.food);
+  document.getElementById('ms-leisure').textContent = fmtShort(totals.leisure);
+  document.getElementById('ms-subs').textContent = fmtShort(totals.subscriptions);
+  document.getElementById('ms-other').textContent = fmtShort(totals.other + totals.transport);
+
+  if (budget > 0) {
+    const pct = Math.min((total / budget) * 100, 100);
+    const bar = document.getElementById('budget-bar');
+    bar.style.width = pct.toFixed(1) + '%';
+    bar.className = 'budget-bar-inner' + (pct >= 100 ? ' over' : pct >= 80 ? ' warn' : '');
+    document.getElementById('bar-spent-label').textContent = fmt(total) + ' spent';
+    document.getElementById('bar-budget-label').textContent = fmt(budget) + ' budget';
+    if (pct >= 80 && pct < 100) showToast('⚠ 80% of weekly budget used');
+    if (pct >= 100) showToast('🚨 Weekly budget exceeded!');
+  }
+
+  const gc = document.getElementById('goals-container');
+  if (!goals.length) { gc.innerHTML = '<div class="empty-state">No goals yet — tap + to add one</div>'; return; }
+  gc.innerHTML = goals.map((g,i) => {
+    const pct = Math.min((g.saved / g.target) * 100, 100);
+    return `<div class="goal-card">
+      <div class="goal-top">
+        <div><div class="goal-name">${g.name}</div><div class="goal-amounts">${fmt(g.saved)} of ${fmt(g.target)}</div></div>
+        <div class="goal-pct">${Math.round(pct)}%</div>
+      </div>
+      <div class="goal-bar-outer"><div class="goal-bar-inner" style="width:${pct.toFixed(1)}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const container = document.getElementById('log-list');
+  if (!expenses.length) { container.innerHTML = '<div class="empty-state">No expenses yet</div>'; return; }
+  const sorted = [...expenses].sort((a,b) => new Date(b.date) - new Date(a.date));
+  const groups = {};
+  sorted.forEach(e => { if (!groups[e.date]) groups[e.date] = []; groups[e.date].push(e); });
+  container.innerHTML = Object.entries(groups).map(([date, items]) => {
+    const d = new Date(date + 'T12:00:00');
+    const label = d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+    const rows = items.map((e,i) => {
+      const globalIdx = expenses.findIndex(x => x === e);
+      return `<div class="log-item">
+        <div class="log-left">
+          <div class="log-dot" style="background:${CAT_COLORS[e.category]}"></div>
+          <div class="log-info"><div class="log-desc">${e.description}</div><div class="log-cat">${CATS[e.category]}</div></div>
+        </div>
+        <div class="log-right">
+          <div class="log-amt" style="color:${CAT_COLORS[e.category]}">${fmt(e.amount)}</div>
+          <button class="del-btn" onclick="deleteExp(${globalIdx})">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="log-date-group"><div class="log-date-label">${label}</div>${rows}</div>`;
+  }).join('');
+}
+
+function renderGoalsSettings() {
+  const c = document.getElementById('settings-goals-list');
+  if (!goals.length) { c.innerHTML = ''; return; }
+  c.innerHTML = goals.map((g,i) => `
+    <div class="settings-card" style="margin-bottom:0.5rem">
+      <div class="settings-row">
+        <div><div class="settings-row-label">${g.name}</div><div class="settings-row-sub">${fmt(g.saved)} saved of ${fmt(g.target)}</div></div>
+        <div style="display:flex;align-items:center;gap:0.5rem">
+          <input type="number" style="width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--accent);font-family:var(--font-head);font-weight:700;font-size:0.85rem;outline:none;text-align:right" value="${g.saved}" onchange="updateGoalSaved(${i}, this.value)" placeholder="0">
+          <button onclick="deleteGoal(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.85rem">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+function deleteExp(i) { expenses.splice(i,1); saveData(); renderAll(); showToast('Expense removed'); }
+
+function selectCat(cat) {
+  selectedCat = cat;
+  document.querySelectorAll('.cat-opt').forEach(el => {
+    el.className = 'cat-opt' + (el.dataset.cat === cat ? ' sel-' + cat : '');
+  });
+}
+
+function addManual() {
+  const desc = document.getElementById('add-desc').value.trim();
+  const amount = parseFloat(document.getElementById('add-amount').value);
+  const date = document.getElementById('add-date').value;
+  if (!desc || isNaN(amount) || amount <= 0 || !date) { showToast('Please fill in all fields'); return; }
+  expenses.push({ description: desc, amount, category: selectedCat, date });
+  saveData(); renderAll();
+  document.getElementById('add-desc').value = '';
+  document.getElementById('add-amount').value = '';
+  showToast('Expense logged ✓');
+  showPage('log');
+}
+
+function saveBudget() {
+  budget = parseFloat(document.getElementById('budget-input').value) || 0;
+  saveData(); renderHome();
+}
+
+function openGoalModal() { document.getElementById('goal-modal').classList.add('open'); }
+function closeGoalModal() { document.getElementById('goal-modal').classList.remove('open'); }
+
+function addGoal() {
+  const name = document.getElementById('goal-name').value.trim();
+  const target = parseFloat(document.getElementById('goal-target').value);
+  const saved = parseFloat(document.getElementById('goal-saved').value) || 0;
+  if (!name || isNaN(target) || target <= 0) { showToast('Please fill in goal details'); return; }
+  goals.push({ name, target, saved });
+  saveData(); renderAll(); closeGoalModal();
+  document.getElementById('goal-name').value = '';
+  document.getElementById('goal-target').value = '';
+  document.getElementById('goal-saved').value = '';
+  showToast('Goal added ✓');
+}
+
+function deleteGoal(i) { goals.splice(i,1); saveData(); renderAll(); showToast('Goal removed'); }
+
+function updateGoalSaved(i, val) {
+  goals[i].saved = parseFloat(val) || 0;
+  saveData(); renderHome();
+}
+
+function exportCSV() {
+  if (!expenses.length) { showToast('No expenses to export'); return; }
+  const rows = [['Date','Description','Category','Amount (£)']];
+  [...expenses].sort((a,b) => new Date(a.date)-new Date(b.date))
+    .forEach(e => rows.push([e.date, e.description, CATS[e.category], e.amount.toFixed(2)]));
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'spendly-export.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showToast('CSV exported ✓');
+}
+
+// ── RECEIPT SCAN ───────────────────────────────────────────────────────────────
+async function handleFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result.split(',')[1];
+    const mediaType = file.type || 'image/jpeg';
+    const res = document.getElementById('scan-result');
+    res.innerHTML = `<div style="padding:0 1.25rem"><img src="${e.target.result}" class="scan-img"></div><div class="analyzing"><div class="spinner"></div><span>Reading receipt...</span></div>`;
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: `Analyse this receipt. Respond ONLY with valid JSON, no markdown:
+{"description":"concise description e.g. Tesco grocery shop","amount":12.50,"category":"food","date":"2024-01-15","items":["item1","item2"]}
+Categories: food, leisure, subscriptions, transport, other.
+If date not visible use today: ${new Date().toISOString().split('T')[0]}.
+If not a receipt: {"error":"Not a receipt"}.` }
+            ]
+          }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content.map(b => b.text||'').join('');
+      let parsed;
+      try { parsed = JSON.parse(text.replace(/```json|```/g,'')); } catch(ex) { throw new Error('parse'); }
+      if (parsed.error) { res.innerHTML = `<div style="padding:0 1.25rem"><div class="result-card"><p style="color:var(--red);font-size:0.875rem">${parsed.error}</p></div></div>`; return; }
+      showScanResult(res, parsed, e.target.result);
+    } catch(err) {
+      res.innerHTML = `<div style="padding:0 1.25rem"><div class="result-card"><p style="color:var(--red);font-size:0.875rem">Could not read receipt — try a clearer photo.</p></div></div>`;
+    }
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function showScanResult(res, data, imgSrc) {
+  const pillClass = 'pill-' + data.category;
+  res.innerHTML = `<div style="padding:0 1.25rem">
+    <img src="${imgSrc}" class="scan-img">
+    <div class="result-card">
+      <div class="result-row"><span class="result-lbl">Description</span><span class="result-val">${data.description}</span></div>
+      <div class="result-row"><span class="result-lbl">Amount</span><span class="result-val" style="color:var(--accent)">${fmt(data.amount)}</span></div>
+      <div class="result-row"><span class="result-lbl">Category</span><span class="cat-pill ${pillClass}">${CATS[data.category]||data.category}</span></div>
+      <div class="result-row"><span class="result-lbl">Date</span><span class="result-val">${data.date}</span></div>
+      ${data.items&&data.items.length?`<div style="padding:0.5rem 0;font-size:0.75rem;color:var(--text2)">Items: ${data.items.join(', ')}</div>`:''}
+    </div>
+    <div class="btn-row">
+      <button class="btn-primary" onclick='confirmScan(${JSON.stringify(data)})'>Log expense →</button>
+      <button class="btn-secondary" onclick="document.getElementById('scan-result').innerHTML=''">Discard</button>
+    </div>
+  </div>`;
+}
+
+function confirmScan(data) {
+  expenses.push({ description: data.description, amount: data.amount, category: data.category, date: data.date });
+  saveData(); renderAll();
+  document.getElementById('scan-result').innerHTML = '';
+  showToast('Expense logged ✓');
+  showPage('log');
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const idx = ['home','scan','add','log','settings'].indexOf(name);
+  if (idx >= 0) document.querySelectorAll('.nav-btn')[idx].classList.add('active');
+  if (name === 'log') renderLog();
+  if (name === 'settings') renderGoalsSettings();
+  if (name === 'home') renderHome();
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+document.getElementById('add-date').value = new Date().toISOString().split('T')[0];
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+</script>
+</body>
+</html>
